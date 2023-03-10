@@ -1,0 +1,47 @@
+name: Test checkout
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: write-all
+
+jobs:
+  get-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changes: ${{ steps.result.outputs.changes }}
+      changes-shell: ${{ steps.result.outputs.changes-shell }}
+    steps:
+      - name: Show github context object
+        run: echo $JSON
+        env:
+          JSON: ${{ toJSON(github) }}
+
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Push
+        run: |
+          echo "bbb" > b.txt
+          git add .
+          git commit -m 'add b.txt'
+          git push origin HEAD
+
+  checkout:
+    runs-on: ubuntu-latest
+    needs:
+      - rename
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+      - name: Show b.txt
+        run: |
+          cat b.txt
