@@ -41,6 +41,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Configure git
+        uses: kota65535/github-git-config-action@v1
+        with:
+          user.name: Tomohiko Ozawa           # Set user.name
+          user.email: kota65535@gmail.com     # Set user.email
       - name: Commit & push
         run: |
           set -x
