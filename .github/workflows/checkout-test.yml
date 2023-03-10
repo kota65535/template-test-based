@@ -26,6 +26,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Configure git
+        uses: kota65535/github-git-config-action@main
+        with:
+          user.name: Tomohiko Ozawa
+          user.email: kota65535@gmail.com
       - name: Push
         run: |
           echo "bbb" > b.txt
