@@ -1,0 +1,78 @@
+name: Template sync
+
+on:
+  workflow_dispatch:
+
+permissions: write-all
+
+jobs:
+  get-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changes: ${{ steps.result.outputs.changes }}
+      changes-shell: ${{ steps.result.outputs.changes-shell }}
+    steps:
+      - name: Show github context object
+        run: echo $JSON
+        env:
+          JSON: ${{ toJSON(github) }}
+  
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      pr-branch: ${{ steps.sync.outputs.pr-branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Sync template
+        uses: kota65535/github-template-sync-action@main
+        id: sync
+        with:
+          rename: true
+          github-token: ${{ secrets.PERSONAL_TOKEN }}
+          pr-labels: |
+            template
+          paths-ignore: |
+            **/*.jar
+  
+  restore-versions:
+    runs-on: ubuntu-latest
+    needs:
+      - sync
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
+        with:
+          aws-oidc-role-arn: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+      - name: Save versions
+        id: versions
+        run: |
+          set -x
+          VERSION_FILE=$(mktemp)
+          ./gradlew showVersion -q > "${VERSION_FILE}"
+          echo "file=${VERSION_FILE}" >> $GITHUB_OUTPUT
+      - name: Checkout template-sync PR branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.sync.outputs.pr-branch }}
+      - name: Restore versions
+        run: |
+          set -x
+          VERSION_FILE="${{ steps.versions.outputs.file }}"
+          while read -r line; do
+            read -ra ary <<< "${line}"
+            # cf. https://github.com/gradle/gradle/issues/14961
+            ./gradlew "${ary[0]}:setDevelopmentVersion" "-PnextVersion=${ary[1]%%-SNAPSHOT}" < /dev/null || :
+          done < "${VERSION_FILE}"
+      - name: Commit & push
+        run: |
+          set -x
+          git add .
+          if ! git diff-index --cached --quiet HEAD; then
+            git commit -m 'revert versions'
+            git pull --rebase
+            git push origin HEAD
+          fi
