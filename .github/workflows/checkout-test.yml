@@ -36,7 +36,7 @@ jobs:
   checkout:
     runs-on: ubuntu-latest
     needs:
-      - rename
+      - push
     steps:
       - name: Checkout
         uses: actions/checkout@v3
