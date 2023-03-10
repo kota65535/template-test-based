@@ -52,7 +52,6 @@ jobs:
       - name: Commit & push
         run: |
           set -x
-#          git pull --rebase
           echo "aaa" > a.txt
           git add .
           if ! git diff-index --cached --quiet HEAD; then
